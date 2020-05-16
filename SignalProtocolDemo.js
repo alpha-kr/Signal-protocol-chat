@@ -1,3 +1,20 @@
+// Your web app's Firebase configuration
+var firebaseConfig = {
+    apiKey: "AIzaSyCFOoLwpSfr4oA2XQ_zDYbVoGECKJZgSrY",
+    authDomain: "signalchat-8d354.firebaseapp.com",
+    databaseURL: "https://signalchat-8d354.firebaseio.com",
+    projectId: "signalchat-8d354",
+    storageBucket: "signalchat-8d354.appspot.com",
+    messagingSenderId: "299458260385",
+    appId: "1:299458260385:web:e7ab70aa449af995ccefe0",
+    measurementId: "G-E7DF4PP803"
+};
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+firebase.analytics();
+var database = firebase.database();
+
+
 /**
  * Dummy signal server connector.
  * 
@@ -17,6 +34,19 @@ class SignalServerStore {
      */
     registerNewPreKeyBundle(userId, preKeyBundle) {
         this.store[userId] = preKeyBundle;
+        firebase.database().ref('preKeyBundleUsers/' + userId).set({
+            identityKey: util.toString(this.store[userId].identityKey),
+            registrationId: this.store[userId].registrationId,
+            preKey: {
+                keyId: this.store[userId].preKey.keyId,
+                publicKey: util.toString(this.store[userId].preKey.publicKey)
+            },
+            signedPreKey: {
+                keyId: this.store[userId].signedPreKey.keyId,
+                publicKey: util.toString(this.store[userId].signedPreKey.publicKey),
+                signature: util.toString(this.store[userId].signedPreKey.signature)
+            }
+        });
     }
 
     /**
@@ -25,8 +55,28 @@ class SignalServerStore {
      * 
      * @param userId The ID of the user.
      */
-    getPreKeyBundle(userId) {
-        return this.store[userId];
+    async getPreKeyBundle(userId)  {
+        let data;
+        await firebase.database().ref('preKeyBundleUsers/' + userId).once('value').then(function (snapshot) {
+            console.log(snapshot.val());
+            console.log(util.toArrayBuffer(snapshot.val().identityKey));
+            data = {
+                identityKey: util.toArrayBuffer(snapshot.val().identityKey),
+                registrationId: snapshot.val().registrationId,
+                preKey: {
+                    keyId: snapshot.val().preKey.keyId,
+                    publicKey: util.toArrayBuffer(snapshot.val().preKey.publicKey)
+                },
+                signedPreKey: {
+                    keyId: snapshot.val().signedPreKey.keyId,
+                    publicKey: util.toArrayBuffer(snapshot.val().signedPreKey.publicKey),
+                    signature: util.toArrayBuffer(snapshot.val().signedPreKey.signature)
+                }
+            }
+        });
+        console.log('hola')
+        return data;
+        //return this.store[userId];
     }
 }
 
@@ -63,8 +113,8 @@ class SignalProtocolManager {
         if (sessionCipher == null) {
             var address = new libsignal.SignalProtocolAddress(remoteUserId, 123);
             var sessionBuilder = new libsignal.SessionBuilder(this.store, address);
-    
-            var remoteUserPreKey = this.signalServerStore.getPreKeyBundle(remoteUserId);
+
+            var remoteUserPreKey = await this.signalServerStore.getPreKeyBundle(remoteUserId);
             await sessionBuilder.processPreKey(remoteUserPreKey);
 
             var sessionCipher = new libsignal.SessionCipher(this.store, address);
@@ -111,7 +161,7 @@ class SignalProtocolManager {
             libsignal.KeyHelper.generateIdentityKeyPair(),
             libsignal.KeyHelper.generateRegistrationId(),
         ]);
-        
+
         this.store.put('identityKey', results[0]);
         this.store.put('registrationId', results[1]);
     }
@@ -128,15 +178,15 @@ class SignalProtocolManager {
             this.store.getIdentityKeyPair(),
             this.store.getLocalRegistrationId()
         ]);
-        
+
         let identity = result[0];
         let registrationId = result[1];
-    
+
         var keys = await Promise.all([
             libsignal.KeyHelper.generatePreKey(preKeyId),
             libsignal.KeyHelper.generateSignedPreKey(identity, signedPreKeyId),
         ]);
-            
+
         let preKey = keys[0]
         let signedPreKey = keys[1];
 
@@ -145,15 +195,15 @@ class SignalProtocolManager {
 
         return {
             identityKey: identity.pubKey,
-            registrationId : registrationId,
-            preKey:  {
-                keyId     : preKeyId,
-                publicKey : preKey.keyPair.pubKey
+            registrationId: registrationId,
+            preKey: {
+                keyId: preKeyId,
+                publicKey: preKey.keyPair.pubKey
             },
             signedPreKey: {
-                keyId     : signedPreKeyId,
-                publicKey : signedPreKey.keyPair.pubKey,
-                signature : signedPreKey.signature
+                keyId: signedPreKeyId,
+                publicKey: signedPreKey.keyPair.pubKey,
+                signature: signedPreKey.signature
             }
         };
     }
@@ -163,33 +213,46 @@ class SignalProtocolManager {
  * Runs the Signal Protocol demo.
  */
 async function runDemo() {
-    var user1 = "user1@domain.cc";
-    var user2 = "user2@domain.cc";
+    var user = "bob";
+    var user2 = 'alice'
+    //var user2 = "Alice";
 
-    var dummySignalServer = new SignalServerStore();
+    dummySignalServer = new SignalServerStore();
 
-    var signalProtocolManagerUser1 = new SignalProtocolManager(user1, dummySignalServer);
-    var signalProtocolManagerUser2 = new SignalProtocolManager(user2, dummySignalServer);
+    signalProtocolManagerUser = new SignalProtocolManager(user, dummySignalServer);
+    let signalProtocolManagerUser2 = new SignalProtocolManager(user2, dummySignalServer);
 
     await Promise.all([
-        signalProtocolManagerUser1.initializeAsync(),
+        signalProtocolManagerUser.initializeAsync(),
         signalProtocolManagerUser2.initializeAsync()
     ]);
 
     /**
      * Let's send an encrypted message from user1 to user2 and then from user2 back to user1.
      */
-    var message = "Hello User 2 !";
-    var encryptedMessage = await signalProtocolManagerUser1.encryptMessageAsync(user2, message);
-    alert("User1: Sending message to User2:\n\nMessage = " + message);
+    //var message = "Hello User 2 !";
+    //var encryptedMessage = await signalProtocolManagerUser1.encryptMessageAsync(user2, message);
+    //alert("User1: Sending message to User2:\n\nMessage = " + message);
 
-    var decryptedMessage = await signalProtocolManagerUser2.decryptMessageAsync(user1, encryptedMessage);
-    alert("User2: Message received from User1\n\nEncrypted Message = " + encryptedMessage.body + "\n\nDecrypted Message = " + decryptedMessage);
+    //var decryptedMessage = await signalProtocolManagerUser2.decryptMessageAsync(user1, encryptedMessage);
+    //alert("User2: Message received from User1\n\nEncrypted Message = " + encryptedMessage.body + "\n\nDecrypted Message = " + decryptedMessage);
 
-    var message2 = "What is up user 1?";
-    var encryptedMessage2 = await signalProtocolManagerUser2.encryptMessageAsync(user1, message2);
-    alert("User2: Sending message to User1:\n\nMessage = " + message2);
+    //var message2 = "What is up user 1?";
+    //var encryptedMessage2 = await signalProtocolManagerUser2.encryptMessageAsync(user1, message2);
+    //alert("User2: Sending message to User1:\n\nMessage = " + message2);
 
-    var decryptedMessage2 = await signalProtocolManagerUser1.decryptMessageAsync(user2, encryptedMessage2);
-    alert("User1: Message received from User2\n\nEncrypted Message = " + encryptedMessage2.body + "\n\nDecrypted Message = " + decryptedMessage2);
+    //var decryptedMessage2 = await signalProtocolManagerUser1.decryptMessageAsync(user2, encryptedMessage2);
+    //alert("User1: Message received from User2\n\nEncrypted Message = " + encryptedMessage2.body + "\n\nDecrypted Message = " + decryptedMessage2);
+}
+
+async function sendMessage(receiver) {
+    const messagePT =  document.getElementById('msg').value;
+    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(receiver, messagePT);
+    console.log(messageEnc);
+    firebase.database().ref('chat/' + 'msg0').set({
+        sender: 'bob',
+        receiver: 'alice',
+        msg: messageEnc
+    });
+    
 }
