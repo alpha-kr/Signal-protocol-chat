@@ -57,8 +57,6 @@ class SignalServerStore {
     async getPreKeyBundle(userId) {
         let data;
         await firebase.database().ref('preKeyBundleUsers/' + userId).once('value').then(function (snapshot) {
-            //console.log(snapshot.val());
-            //console.log(util.toArrayBuffer(snapshot.val().identityKey));
             data = {
                 identityKey: util.toArrayBuffer(snapshot.val().identityKey),
                 registrationId: snapshot.val().registrationId,
@@ -73,7 +71,6 @@ class SignalServerStore {
                 }
             }
         });
-        //console.log('hola')
         return data;
         //return this.store[userId];
     }
@@ -144,7 +141,6 @@ class SignalProtocolManager {
         var messageHasEmbeddedPreKeyBundle = cipherText.type == 3;
 
         if (messageHasEmbeddedPreKeyBundle) {
-            console.log(cipherText.body);
             var decryptedMessage = await sessionCipher.decryptPreKeyWhisperMessage(cipherText.body, 'binary');
             return util.toString(decryptedMessage);
         } else {
@@ -214,61 +210,38 @@ class SignalProtocolManager {
  */
 async function runDemo() {
     var user = "bob"; // se supone que este es el usuario en el pc
-    var user2 = 'alice' // para propositos de prueba SE DEBE BORRAR Y TODO LO QUE SEA USER2
+    //var user2 = 'alice' // para propositos de prueba SE DEBE BORRAR Y TODO LO QUE SEA USER2
 
     dummySignalServer = new SignalServerStore();
 
     signalProtocolManagerUser = new SignalProtocolManager(user, dummySignalServer);
-    let signalProtocolManagerUser2 = new SignalProtocolManager(user2, dummySignalServer);
+    //signalProtocolManagerUser2 = new SignalProtocolManager(user2, dummySignalServer);
 
     await Promise.all([
         signalProtocolManagerUser.initializeAsync(),
-        signalProtocolManagerUser2.initializeAsync()
+        //signalProtocolManagerUser2.initializeAsync()
     ]);
 
-    firebase.database().ref('chat').on('child_added', async function(snapshot) {
-        if(snapshot.val().receiver === 'alice'){ // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
-            //console.log(snapshot.val());
+    firebase.database().ref('chat').once('child_added', async function(snapshot) {
+        if(snapshot.val().receiver === user){ // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
             const msgEC = {
-                body: util.toArrayBuffer(snapshot.val().msg.body),
+                body: snapshot.val().msg.body,
                 registrationId: snapshot.val().msg.registrationId,
                 type: snapshot.val().msg.type
             }
-            //console.log(msgEC);
-            const decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync('alice', msgEC);  // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
+            const decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync(user, msgEC);  // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
             console.log(decryptedMessage);
         }
       });
 
-    /**
-     * Let's send an encrypted message from user1 to user2 and then from user2 back to user1.
-     */
-    //var message = "Hello User 2 !";
-    //var encryptedMessage = await signalProtocolManagerUser1.encryptMessageAsync(user2, message);
-    //alert("User1: Sending message to User2:\n\nMessage = " + message);
-
-    //var decryptedMessage = await signalProtocolManagerUser2.decryptMessageAsync(user1, encryptedMessage);
-    //alert("User2: Message received from User1\n\nEncrypted Message = " + encryptedMessage.body + "\n\nDecrypted Message = " + decryptedMessage);
-
-    //var message2 = "What is up user 1?";
-    //var encryptedMessage2 = await signalProtocolManagerUser2.encryptMessageAsync(user1, message2);
-    //alert("User2: Sending message to User1:\n\nMessage = " + message2);
-
-    //var decryptedMessage2 = await signalProtocolManagerUser1.decryptMessageAsync(user2, encryptedMessage2);
-    //alert("User1: Message received from User2\n\nEncrypted Message = " + encryptedMessage2.body + "\n\nDecrypted Message = " + decryptedMessage2);
 }
 
 async function sendMessage(receiver) {
     const messagePT = document.getElementById('msg').value;
-    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(receiver, messagePT);
-    //console.log(messageEnc);
+    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync('alice', messagePT);
     firebase.database().ref('chat').push({
         sender: 'bob',
         receiver: 'alice',
-        msg: {
-            body: util.toString(messageEnc.body),
-            registrationId: messageEnc.registrationId,
-            type: messageEnc.type
-        }
+        msg: messageEnc
     });
 }
