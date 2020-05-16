@@ -12,7 +12,6 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 firebase.analytics();
-var database = firebase.database();
 
 
 /**
@@ -55,11 +54,11 @@ class SignalServerStore {
      * 
      * @param userId The ID of the user.
      */
-    async getPreKeyBundle(userId)  {
+    async getPreKeyBundle(userId) {
         let data;
         await firebase.database().ref('preKeyBundleUsers/' + userId).once('value').then(function (snapshot) {
-            console.log(snapshot.val());
-            console.log(util.toArrayBuffer(snapshot.val().identityKey));
+            //console.log(snapshot.val());
+            //console.log(util.toArrayBuffer(snapshot.val().identityKey));
             data = {
                 identityKey: util.toArrayBuffer(snapshot.val().identityKey),
                 registrationId: snapshot.val().registrationId,
@@ -74,7 +73,7 @@ class SignalServerStore {
                 }
             }
         });
-        console.log('hola')
+        //console.log('hola')
         return data;
         //return this.store[userId];
     }
@@ -145,6 +144,7 @@ class SignalProtocolManager {
         var messageHasEmbeddedPreKeyBundle = cipherText.type == 3;
 
         if (messageHasEmbeddedPreKeyBundle) {
+            console.log(cipherText.body);
             var decryptedMessage = await sessionCipher.decryptPreKeyWhisperMessage(cipherText.body, 'binary');
             return util.toString(decryptedMessage);
         } else {
@@ -213,9 +213,8 @@ class SignalProtocolManager {
  * Runs the Signal Protocol demo.
  */
 async function runDemo() {
-    var user = "bob";
-    var user2 = 'alice'
-    //var user2 = "Alice";
+    var user = "bob"; // se supone que este es el usuario en el pc
+    var user2 = 'alice' // para propositos de prueba SE DEBE BORRAR Y TODO LO QUE SEA USER2
 
     dummySignalServer = new SignalServerStore();
 
@@ -226,6 +225,20 @@ async function runDemo() {
         signalProtocolManagerUser.initializeAsync(),
         signalProtocolManagerUser2.initializeAsync()
     ]);
+
+    firebase.database().ref('chat').on('child_added', async function(snapshot) {
+        if(snapshot.val().receiver === 'alice'){ // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
+            //console.log(snapshot.val());
+            const msgEC = {
+                body: util.toArrayBuffer(snapshot.val().msg.body),
+                registrationId: snapshot.val().msg.registrationId,
+                type: snapshot.val().msg.type
+            }
+            //console.log(msgEC);
+            const decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync('alice', msgEC);  // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
+            console.log(decryptedMessage);
+        }
+      });
 
     /**
      * Let's send an encrypted message from user1 to user2 and then from user2 back to user1.
@@ -246,13 +259,16 @@ async function runDemo() {
 }
 
 async function sendMessage(receiver) {
-    const messagePT =  document.getElementById('msg').value;
+    const messagePT = document.getElementById('msg').value;
     const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(receiver, messagePT);
-    console.log(messageEnc);
-    firebase.database().ref('chat/' + 'msg0').set({
+    //console.log(messageEnc);
+    firebase.database().ref('chat').push({
         sender: 'bob',
         receiver: 'alice',
-        msg: messageEnc
+        msg: {
+            body: util.toString(messageEnc.body),
+            registrationId: messageEnc.registrationId,
+            type: messageEnc.type
+        }
     });
-    
 }
