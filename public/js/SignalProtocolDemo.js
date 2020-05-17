@@ -1,17 +1,5 @@
 // Your web app's Firebase configuration
-var firebaseConfig = {
-    apiKey: "AIzaSyCFOoLwpSfr4oA2XQ_zDYbVoGECKJZgSrY",
-    authDomain: "signalchat-8d354.firebaseapp.com",
-    databaseURL: "https://signalchat-8d354.firebaseio.com",
-    projectId: "signalchat-8d354",
-    storageBucket: "signalchat-8d354.appspot.com",
-    messagingSenderId: "299458260385",
-    appId: "1:299458260385:web:e7ab70aa449af995ccefe0",
-    measurementId: "G-E7DF4PP803"
-};
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-firebase.analytics();
+ 
 
 
 /**
@@ -20,6 +8,11 @@ firebase.analytics();
  * In a real application this component would connect to your signal
  * server for storing and fetching user public keys over HTTP.
  */
+window.addEventListener('close',()=>{
+    firebase.database().ref('preKeyBundleUsers/' + user).update({
+        status:0,});
+
+});
 class SignalServerStore {
     constructor() {
         this.store = {};
@@ -34,6 +27,7 @@ class SignalServerStore {
     registerNewPreKeyBundle(userId, preKeyBundle) {
         this.store[userId] = preKeyBundle;
         firebase.database().ref('preKeyBundleUsers/' + userId).set({
+            status:1,
             identityKey: util.toString(this.store[userId].identityKey),
             registrationId: this.store[userId].registrationId,
             preKey: {
@@ -47,6 +41,7 @@ class SignalServerStore {
             }
         });
     }
+
 
     /**
      * Gets the pre-key bundle for the given user ID.
@@ -209,12 +204,12 @@ class SignalProtocolManager {
  * Runs the Signal Protocol demo.
  */
 async function runDemo() {
-    var user = "bob"; // se supone que este es el usuario en el pc
+     // se supone que este es el usuario en el pc
     //var user2 = 'alice' // para propositos de prueba SE DEBE BORRAR Y TODO LO QUE SEA USER2
 
     dummySignalServer = new SignalServerStore();
 
-    signalProtocolManagerUser = new SignalProtocolManager(user, dummySignalServer);
+    signalProtocolManagerUser = new SignalProtocolManager(user[0], dummySignalServer);
     //signalProtocolManagerUser2 = new SignalProtocolManager(user2, dummySignalServer);
 
     await Promise.all([
@@ -222,26 +217,28 @@ async function runDemo() {
         //signalProtocolManagerUser2.initializeAsync()
     ]);
 
-    firebase.database().ref('chat').once('child_added', async function(snapshot) {
-        if(snapshot.val().receiver === user){ // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
-            const msgEC = {
-                body: snapshot.val().msg.body,
-                registrationId: snapshot.val().msg.registrationId,
-                type: snapshot.val().msg.type
-            }
-            const decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync(user, msgEC);  // CAMBIAR POR EL USUARIO QUE DEBE ESTAR EN EL PC user
-            console.log(decryptedMessage);
-        }
-      });
+ 
 
 }
 
 async function sendMessage(receiver) {
+    
+ 
     const messagePT = document.getElementById('msg').value;
-    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync('alice', messagePT);
-    firebase.database().ref('chat').push({
-        sender: 'bob',
-        receiver: 'alice',
+    let mensajes=document.querySelector("div.msg_history");
+   
+    let tumensaje=`<div class="outgoing_msg">
+    <div class="sent_msg">
+    <p>${messagePT}</p>
+    <span class="time_date"> 11:01 AM    |    June 9</span> </div>
+  </div>`
+  mensajes.innerHTML+=tumensaje;
+    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(user, messagePT);
+    firebase.database().ref('chat/msg0').push({
+        sender: user[0],
+        receiver: user[0]=='alice'?'bob':'alice',
         msg: messageEnc
     });
+     
+    
 }
