@@ -233,7 +233,7 @@ async function sendMessage(receiver) {
     <span class="time_date"> 11:01 AM    |    June 9</span> </div>
   </div>`
   mensajes.innerHTML+=tumensaje;
-    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(user, messagePT);
+    const messageEnc = await signalProtocolManagerUser.encryptMessageAsync(user[0]=='alice'?'bob':'alice', messagePT);
     firebase.database().ref('chat/msg0').push({
         sender: user[0],
         receiver: user[0]=='alice'?'bob':'alice',

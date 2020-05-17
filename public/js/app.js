@@ -1,8 +1,5 @@
 const db=firebase.database();
-var user;
-var dummySignalServer  ;
 
-var signalProtocolManagerUser;
 
 var usuarios=db.ref('preKeyBundleUsers');
 usuarios.on('value',(s)=>{
@@ -28,7 +25,7 @@ firebase.database().ref('chat/msg0').on('child_added', async function(snapshot) 
      
     if(snapshot.val().receiver == user[0]){
         
-       
+       console.log(user[0]);
         const msgEC = {
             body: snapshot.val().msg.body,
             registrationId: snapshot.val().msg.registrationId,
