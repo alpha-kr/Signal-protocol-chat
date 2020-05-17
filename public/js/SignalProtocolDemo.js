@@ -8,8 +8,8 @@
  * In a real application this component would connect to your signal
  * server for storing and fetching user public keys over HTTP.
  */
-window.addEventListener('close',()=>{
-    firebase.database().ref('preKeyBundleUsers/' + user).update({
+window.addEventListener('unload',()=>{
+    firebase.database().ref('preKeyBundleUsers/' + user[0]).update({
         status:0,});
 
 });

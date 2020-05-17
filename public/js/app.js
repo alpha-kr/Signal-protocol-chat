@@ -1,17 +1,19 @@
 const db=firebase.database();
 
 
-var usuarios=db.ref('preKeyBundleUsers');
-usuarios.on('value',(s)=>{
+var usuarios=db.ref('preKeyBundleUsers')
+usuarios.once('value').then((s)=>{
     if (s.val().alice.status==1 && s.val().bob.status==1) {
         alert("session ocupada");
+      document.write("alice y bob ya estan charlando")
         
-    } 
+    }  
 
 
      
 
 });
+firebase.database().ref('chat').remove()
 
 while(  !(user=prompt("Escriba usuario Opciones alice o bob").match('alice|bob'))){
      
