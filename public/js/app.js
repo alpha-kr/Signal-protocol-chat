@@ -1,28 +1,46 @@
 const db=firebase.database();
-
-
-var usuarios=db.ref('preKeyBundleUsers')
+var alice=-1;
+var bob=-1;
+ 
+var usuarios=db.ref('preKeyBundleUsers/alice/status')
 usuarios.once('value').then((s)=>{
-    if (s.val().alice.status==1 && s.val().bob.status==1) {
-        alert("session ocupada");
-      document.write("alice y bob ya estan charlando")
-        
-    }  
+  alice=s.val();
+  
+  firebase.database().ref('preKeyBundleUsers/bob/status').once('value').then(( e)=>{
+   
+  bob=e.val();
+  console.log(alice," ",bob)
+  if (alice ==1 && bob==1 ) {
+    alert("session ocupada"); 
+    document.write("alice y bob ya estan hablando")
+    
+}  else{
+  
+  while(  !(user=prompt("Escriba usuario Opciones alice o bob").match('alice|bob'))  ){
+   
+      alert(user[0]+"debes escribir alice o bob literalmente")
+    
+    
+  }
+  
+  runDemo();
+db.ref('preKeyBundleUsers/' + user[0]).update({
+  status:1});
+let h5=document.getElementById("contacto").innerText=user[0]=='alice'?'bob':'alice';
+
+   
 
 
-     
+}
+});
+
+   
 
 });
 firebase.database().ref('chat').remove()
 
-while(  !(user=prompt("Escriba usuario Opciones alice o bob").match('alice|bob'))){
-     
-    }
-    let h5=document.getElementById("contacto").innerText=user[0]=='alice'?'bob':'alice';
-   db.ref('preKeyBundleUsers/' + user[0]).update({
-        status:1});
-    runDemo();
-    var shit;
+
+    
 firebase.database().ref('chat/msg0').on('child_added', async function(snapshot) {
      
     if(snapshot.val().receiver == user[0]){

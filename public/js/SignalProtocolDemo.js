@@ -239,6 +239,7 @@ async function sendMessage(receiver) {
         receiver: user[0]=='alice'?'bob':'alice',
         msg: messageEnc
     });
+    document.getElementById('msg').value=""
      
     
 }
